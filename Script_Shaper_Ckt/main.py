@@ -17,10 +17,10 @@ from scipy.stats import pearsonr
 # Plot limit with 400 points with distance of 25*10^-9 between them
 t1 = np.arange(0, 400) * 25 * 10**-9
 xlabels = ["C0", "Ca", "Cb", "Cc", "La", "Lb", "Lc", "RL"]
-Sigma = 2
+Sigma = 3
 pause = 3
 #  Number of iterations
-n_iterations = 150
+n_iterations = 1500
 print("\nStart")
 
 
@@ -47,13 +47,12 @@ def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    timestamp = datetime.now().strftime("%d-%m-%Y") if add_date else ""
+    timestamp = datetime.now().strftime("%d-%m-%Y")
     full_name = f"{file_name}_{timestamp}.{ext}" if add_date else f"{file_name}.{ext}"
     full_path = os.path.join(directory, full_name)
 
     plt.savefig(full_path, format=ext, dpi=dpi, bbox_inches="tight")
     print(f"Saved in: {full_path}")
-
 
 def Scatter(
     x_coords, y, pole_name, pol="\n", save_directory="Scatter", size=10, save_fig=False
@@ -76,7 +75,6 @@ def Scatter(
     if save_fig:
         file_name = f"Scatter_polo_{pole_name}".replace(" ", "_")
         save_figure(file_name, directory=save_directory)
-
 
 def correlacao(
     x, y, pole_name, pol="\n", save_directory="Correlacao", size=10, save_fig=False
@@ -140,7 +138,6 @@ def draw_std_ellipse(ax, real_pt, l, m, width=8, height=12, **kwargs):
             **kwargs,
         )
         ax.add_patch(elipse)
-    
     
 def pole_map(
     all_func_poles, save_directory="Pole Map", save_fig=False
@@ -209,10 +206,10 @@ def pole_map(
 
     plt.show(block=False)
     plt.pause(pause)
+    plt.close()
 
 
     return np.array(real_pt).T, np.array(imag_pt).T
-
 
 def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     """
@@ -240,7 +237,6 @@ def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     plt.axvline(0, color="black", linewidth=0.8)
     plt.grid(True)
     plt.tight_layout()
-
 
 def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", save_fig=False):
     print("Plot pulse")
@@ -307,7 +303,6 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", save_fig=False)
     plt.pause(pause)
     plt.close()
     plt.clf()
-
 
 def MonteCarlo_iteration(iterations, erro, nominal_values, FT, t):
     """
@@ -438,7 +433,6 @@ def MonteCarlo_iteration(iterations, erro, nominal_values, FT, t):
 
     return np.array(MonteCarlo).T, all_poles, y_out
 
-
 def Pearson8(all_y_coord, x_coords, pole_name, save_fig, stop=0):
     print("Pearson")
 
@@ -472,7 +466,7 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
 
         mean = np.mean(y_coord)
         deviation = np.std(y_coord)
-        plt.hist(y_coord, bins=10, color="darkblue", edgecolor="black", alpha=0.7)
+        plt.hist(y_coord, bins=25, color="darkblue", edgecolor="black", alpha=0.7)
         plt.axvline(
             mean + deviation,
             color="red",
@@ -512,9 +506,8 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
             file_name = f"Hist_{pole_name[enum]}".replace(" ", "_")
             save_figure(file_name, directory=save_directory)
         plt.show(block=False)
-        plt.pause(pause)
+        plt.pause(pause-1)
         plt.close("all")
-        plt.clf()
 
 
 ## Definition of constants ##
@@ -572,7 +565,7 @@ H1 = PMT * h
 error = [10, 1, 1, 1, 2, 2, 2, 0.10, 0, 0]  # C  # L  # RL  # tau1_2
 error_percentual = [i / 100 for i in error]
 
-save = True
+save = False
 
 # Iteration
 all_x_coord, all_pols, y = MonteCarlo_iteration(
