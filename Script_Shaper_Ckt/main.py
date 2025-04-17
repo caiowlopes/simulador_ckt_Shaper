@@ -134,9 +134,29 @@ def correlacao(
         file_name = f"Correlacao_polo_{pole_name}".replace(" ", "_")
         save_figure(file_name, directory=save_directory)
 
+def draw_std_ellipse(ax, real_pt, imag_pt, l, m, **kwargs):
 
+    mx, my = m[0], m[1]
+    lx, ly = l[0], l[1]
+
+    width = (np.max(real_pt) - np.min(real_pt)) / np.mean(lx)
+    height = (np.max(imag_pt) - np.min(imag_pt)) / np.mean(ly)
+
+    for i in range(len(real_pt[0])):
+        elipse = Ellipse(
+            xy=(mx[i], my[i]),
+            width=width * lx[i],
+            height=height * ly[i],
+            angle=0,
+            alpha=0.5,
+            facecolor="grey",
+            **kwargs,
+        )
+        ax.add_patch(elipse)
+    
+    
 def pole_map(
-    all_func_poles, width=5, height=5, save_directory="Pole Map", save_fig=False
+    all_func_poles, save_directory="Pole Map", save_fig=False
 ):
     print("Pole map")
 
@@ -150,26 +170,14 @@ def pole_map(
     real_pt = np.real(filtered_poles)
     imag_pt = np.imag(filtered_poles)
 
-    # Ellipses auxiliary variables
-    mx = np.mean(real_pt, axis=0)  # mean real
-    lx = np.std(real_pt, axis=0)  # standard deviation real
-    my = np.mean(imag_pt, axis=0)  # mean imaginaria
-    ly = np.std(imag_pt, axis=0)  # imaginary standard deviation
+    # Ellipses and auxiliary variables #
+    # mean real and imaginary
+    m = [np.mean(real_pt, axis=0), np.mean(imag_pt, axis=0)]  
+    # standard deviation real and imaginary
+    l = [np.std(real_pt, axis=0), np.std(imag_pt, axis=0)]
 
-    # Standard deviation ellipses
-    width = width
-    height = height
-    for i in range(len(real_pt[0])):
-        elipse = Ellipse(
-            xy=(mx[i], my[i]),
-            width=width * lx[i],
-            height=height * ly[i],
-            angle=0,
-            alpha=0.5,
-            facecolor="grey",
-        )
-        ax.add_patch(elipse)
-
+    draw_std_ellipse(ax, real_pt, imag_pt, l, m)
+    
     # Plot of poles and zero
     ax.scatter(real_pt, imag_pt, marker=".", label="Polos")
     ax.scatter(real_pt[0], imag_pt[0], marker="x", label="Polos Nominais")
@@ -581,16 +589,16 @@ all_x_coord, all_pols, y = MonteCarlo_iteration(
 )
 
 ## PLOTS PULSE ##
-plot_pulso(t=t1, y=y, sigma=Sigma, bandas=True, save_fig=save)
+# plot_pulso(t=t1, y=y, sigma=Sigma, bandas=True, save_fig=save)
 
 ## PLOT POLE_MAP ##
 all_y_real, all_y_imag = pole_map(all_pols, width=9, height=9, save_fig=save)
 
 ## PLOT PEARSON ##
-Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
-Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
+# Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
+# Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
 
-## PLOT HISTOSGRAMS ##
-histogram(all_y_real, pole_names_real, save_fig=save)
-histogram(all_y_imag, pole_names_imag, save_fig=save)
+# ## PLOT HISTOSGRAMS ##
+# histogram(all_y_real, pole_names_real, save_fig=save)
+# histogram(all_y_imag, pole_names_imag, save_fig=save)
 
