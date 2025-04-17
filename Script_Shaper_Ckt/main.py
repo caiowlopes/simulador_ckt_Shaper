@@ -2,7 +2,6 @@
 
 import os
 import numpy as np
-from time import sleep
 import random
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -19,31 +18,13 @@ from scipy.stats import pearsonr
 t1 = np.arange(0, 400) * 25 * 10**-9
 xlabels = ["C0", "Ca", "Cb", "Cc", "La", "Lb", "Lc", "RL"]
 Sigma = 2
-pause = 1.5 * 2
+pause = 3
 #  Number of iterations
-n_iterations = 1500
+n_iterations = 150
 print("\nStart")
 
 
 ## Functions ##
-def transpose(matrix):
-    """
-    Transpose a given matrix, swapping rows with columns.
-
-    Parameters:
-    - matrix (list of lists): A rectangular 2D list where each sublist represents a row.
-
-    Returns:
-    - list of lists: A new matrix with rows and columns transposed.
-
-    ################################
-    # all_x_coord transpose of MC
-    # all_y_real transpose of real_pt
-    # all_y_imag transpose of imag_pt
-    ################################
-    """
-    return [[row[i] for row in matrix] for i in range(len(matrix[0]))]
-
 
 def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     """
@@ -134,19 +115,25 @@ def correlacao(
         file_name = f"Correlacao_polo_{pole_name}".replace(" ", "_")
         save_figure(file_name, directory=save_directory)
 
-def draw_std_ellipse(ax, real_pt, imag_pt, l, m, **kwargs):
+def draw_std_ellipse(ax, real_pt, l, m, width=8, height=12, **kwargs):
 
     mx, my = m[0], m[1]
     lx, ly = l[0], l[1]
 
-    width = (np.max(real_pt) - np.min(real_pt)) / np.mean(lx)
-    height = (np.max(imag_pt) - np.min(imag_pt)) / np.mean(ly)
-
     for i in range(len(real_pt[0])):
+
+        if 0 <= i < 2: #p2/3
+            width1 = width + 1
+            height1 = height + 2
+
+        elif 2 <= i: #p4/5
+            width1 = width
+            height1 = height
+
         elipse = Ellipse(
             xy=(mx[i], my[i]),
-            width=width * lx[i],
-            height=height * ly[i],
+            width=width1 * lx[i],
+            height=height1 * ly[i],
             angle=0,
             alpha=0.5,
             facecolor="grey",
@@ -176,7 +163,7 @@ def pole_map(
     # standard deviation real and imaginary
     l = [np.std(real_pt, axis=0), np.std(imag_pt, axis=0)]
 
-    draw_std_ellipse(ax, real_pt, imag_pt, l, m)
+    draw_std_ellipse(ax, real_pt, l, m)
     
     # Plot of poles and zero
     ax.scatter(real_pt, imag_pt, marker=".", label="Polos")
@@ -188,7 +175,8 @@ def pole_map(
     deslocy = 0.05
     width_x = plt.xlim()[1] - plt.xlim()[0]
     width_y = plt.ylim()[1] - plt.ylim()[0]
-    for i in range(6):
+    num_polos = real_pt.shape[1]
+    for i in range(num_polos):
         ax.text(
             real_pt[0][i] + deslocx * width_x,
             imag_pt[0][i] + deslocy * width_y,
@@ -196,9 +184,13 @@ def pole_map(
             fontsize=9,
             color="blue",
         )
-    ax.text(
-        -4.5 * deslocx * width_x, 4.5 * deslocx * width_y, "Z1", fontsize=9, color="red"
-    )
+        if i == 5:
+            ax.text(real_pt[0][i] - deslocx * width_x, 
+                    imag_pt[0][i] + deslocy * width_y, 
+                    "Z1", 
+                    fontsize=9, 
+                    color="red"
+            )
 
     # Axis e grid
     ax.axhline(0, color="black", linewidth=0.8)
@@ -217,10 +209,9 @@ def pole_map(
 
     plt.show(block=False)
     plt.pause(pause)
-    plt.close()
-    plt.clf()
 
-    return transpose(real_pt), transpose(imag_pt)
+
+    return np.array(real_pt).T, np.array(imag_pt).T
 
 
 def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
@@ -385,9 +376,9 @@ def MonteCarlo_iteration(iterations, erro, nominal_values, FT, t):
         all_poles.append(polos)
 
         # Correção do residuos (tirando a parte img dos residuos reais)
-        # for polo1, residuo1 in zip(polos, residuos):
-        #     if polo1.imag == 0:
-        #         residuo1 = residuo1.real
+        for polo1, residuo1 in zip(polos, residuos):
+            if polo1.imag == 0:
+                residuo1 = residuo1.real
 
         """LAPLACE INVERSA E GRAFICOS"""
 
@@ -445,7 +436,7 @@ def MonteCarlo_iteration(iterations, erro, nominal_values, FT, t):
             y_out.append(y1)
             # plt.plot(t, y1, color="black")
 
-    return transpose(MonteCarlo), all_poles, y_out
+    return np.array(MonteCarlo).T, all_poles, y_out
 
 
 def Pearson8(all_y_coord, x_coords, pole_name, save_fig, stop=0):
@@ -592,7 +583,7 @@ all_x_coord, all_pols, y = MonteCarlo_iteration(
 # plot_pulso(t=t1, y=y, sigma=Sigma, bandas=True, save_fig=save)
 
 ## PLOT POLE_MAP ##
-all_y_real, all_y_imag = pole_map(all_pols, width=9, height=9, save_fig=save)
+all_y_real, all_y_imag = pole_map(all_pols, save_fig=save)
 
 ## PLOT PEARSON ##
 # Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
