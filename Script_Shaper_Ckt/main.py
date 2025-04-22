@@ -586,7 +586,7 @@ all_x_coord, all_pols, y = MonteCarlo_iteration(
 )
 
 ## PLOTS PULSE ##
-plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}", sigma=Sigma, bandas=True, save_fig=save)
+plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}", sigma=Sigma, bandas=False, save_fig=save)
 
 ## PLOT POLE_MAP ##
 all_y_real, all_y_imag = pole_map(all_pols, save_fig=save)
