@@ -2,7 +2,6 @@
 
 import os
 import numpy as np
-from time import sleep
 import random
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -28,6 +27,7 @@ print("\nStart")
 
 
 ## Functions ##
+
 def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     """
     Saves the current matplotlib figure to a specified folder.
@@ -49,13 +49,12 @@ def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    timestamp = datetime.now().strftime("%d-%m-%Y") if add_date else ""
+    timestamp = datetime.now().strftime("%d-%m-%Y")
     full_name = f"{file_name}_{timestamp}.{ext}" if add_date else f"{file_name}.{ext}"
     full_path = os.path.join(directory, full_name)
 
     plt.savefig(full_path, format=ext, dpi=dpi, bbox_inches="tight")
     print(f"Saved in: {full_path}")
-
 
 def Scatter(
     x_coords, y, pole_name, pol="\n", save_directory="Scatter", size=10, save_fig=False
@@ -78,7 +77,6 @@ def Scatter(
     if save_fig:
         file_name = f"Scatter_polo_{pole_name}".replace(" ", "_")
         save_figure(file_name, directory=save_directory)
-
 
 def correlacao(
     x, y, pole_name, pol="\n", save_directory="Correlacao", size=10, save_fig=False
@@ -117,9 +115,34 @@ def correlacao(
         file_name = f"Correlacao_polo_{pole_name}".replace(" ", "_")
         save_figure(file_name, directory=save_directory)
 
+def draw_std_ellipse(ax, real_pt, l, m, width=8, height=12, **kwargs):
 
+    mx, my = m[0], m[1]
+    lx, ly = l[0], l[1]
+
+    for i in range(len(real_pt[0])):
+
+        if 0 <= i < 2: #p2/3
+            width1 = width + 1
+            height1 = height + 2
+
+        elif 2 <= i: #p4/5
+            width1 = width
+            height1 = height
+
+        elipse = Ellipse(
+            xy=(mx[i], my[i]),
+            width=width1 * lx[i],
+            height=height1 * ly[i],
+            angle=0,
+            alpha=0.5,
+            facecolor="grey",
+            **kwargs,
+        )
+        ax.add_patch(elipse)
+    
 def pole_map(
-    all_func_poles, width=5, height=5, save_directory="Pole Map", save_fig=False
+    all_func_poles, save_directory="Pole Map", save_fig=False
 ):
     print("Pole map")
 
@@ -134,26 +157,14 @@ def pole_map(
     imag_pt = np.imag(filtered_poles)
     return np.array(real_pt).T, np.array(imag_pt).T 
 
-    # Ellipses auxiliary variables
-    mx = np.mean(real_pt, axis=0)  # mean real
-    lx = np.std(real_pt, axis=0)  # standard deviation real
-    my = np.mean(imag_pt, axis=0)  # mean imaginaria
-    ly = np.std(imag_pt, axis=0)  # imaginary standard deviation
+    # Ellipses and auxiliary variables #
+    # mean real and imaginary
+    m = [np.mean(real_pt, axis=0), np.mean(imag_pt, axis=0)]  
+    # standard deviation real and imaginary
+    l = [np.std(real_pt, axis=0), np.std(imag_pt, axis=0)]
 
-    # Standard deviation ellipses
-    width = width
-    height = height
-    for i in range(len(real_pt[0])):
-        elipse = Ellipse(
-            xy=(mx[i], my[i]),
-            width=width * lx[i],
-            height=height * ly[i],
-            angle=0,
-            alpha=0.5,
-            facecolor="grey",
-        )
-        ax.add_patch(elipse)
-
+    draw_std_ellipse(ax, real_pt, l, m)
+    
     # Plot of poles and zero
     ax.scatter(real_pt, imag_pt, marker=".", label="Polos")
     ax.scatter(real_pt[0], imag_pt[0], marker="x", label="Polos Nominais")
@@ -164,7 +175,8 @@ def pole_map(
     deslocy = 0.05
     width_x = plt.xlim()[1] - plt.xlim()[0]
     width_y = plt.ylim()[1] - plt.ylim()[0]
-    for i in range(6):
+    num_polos = real_pt.shape[1]
+    for i in range(num_polos):
         ax.text(
             real_pt[0][i] + deslocx * width_x,
             imag_pt[0][i] + deslocy * width_y,
@@ -172,9 +184,13 @@ def pole_map(
             fontsize=9,
             color="blue",
         )
-    ax.text(
-        -4.5 * deslocx * width_x, 4.5 * deslocx * width_y, "Z1", fontsize=9, color="red"
-    )
+        if i == 5:
+            ax.text(real_pt[0][i] - deslocx * width_x, 
+                    imag_pt[0][i] + deslocy * width_y, 
+                    "Z1", 
+                    fontsize=9, 
+                    color="red"
+            )
 
     # Axis e grid
     ax.axhline(0, color="black", linewidth=0.8)
@@ -197,6 +213,8 @@ def pole_map(
 
     return np.array(real_pt).T, np.array(imag_pt).T 
 
+
+    return np.array(real_pt).T, np.array(imag_pt).T
 
 def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     """
@@ -360,9 +378,9 @@ def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
         all_poles.append(polos)
 
         # Correção do residuos (tirando a parte img dos residuos reais)
-        # for polo1, residuo1 in zip(polos, residuos):
-        #     if polo1.imag == 0:
-        #         residuo1 = residuo1.real
+        for polo1, residuo1 in zip(polos, residuos):
+            if polo1.imag == 0:
+                residuo1 = residuo1.real
 
         """LAPLACE INVERSA E GRAFICOS"""
 
@@ -496,7 +514,7 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
 
         # Show and pause between figures
         plt.show(block=False)
-        plt.pause(pause)
+        plt.pause(pause-1)
         plt.close("all")
         break
 
@@ -573,11 +591,17 @@ all_x_coord, all_pols, y = MonteCarlo_iteration(
 # plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}" sigma=Sigma, bandas=True, save_fig=save)
 
 ## PLOT POLE_MAP ##
-all_y_real, all_y_imag = pole_map(all_pols, width=9, height=9, save_fig=save)
+all_y_real, all_y_imag = pole_map(all_pols, save_fig=save)
 
 ## PLOT PEARSON ##
 # Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
 # Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
+# Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
+# Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
+
+# ## PLOT HISTOSGRAMS ##
+# histogram(all_y_real, pole_names_real, save_fig=save)
+# histogram(all_y_imag, pole_names_imag, save_fig=save)
 
 ## PLOT HISTOSGRAMS ##
 histogram(all_y_real, pole_names_real, save_fig=save)
