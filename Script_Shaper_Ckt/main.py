@@ -65,7 +65,7 @@ def Scatter(
     # Main title with the name of the pole
     plt.suptitle(f"Polo {pole_name}{pol}", fontweight="bold")
 
-    for i, (xi, label) in enumerate(zip(x_coords[:8], xlabels)):
+    for i, (xi, label) in enumerate(zip(x_coords[:8], xlabels)): # x_coords[:8] to remove tau1 and tau2.
         row, col = divmod(i, 4)  # return tupla (a // b, a % b)
         axs[row, col].scatter(xi, y)
         axs[row, col].set_title(f"Scatter Plot {i+1}")
@@ -82,7 +82,7 @@ def correlacao(
     x, y, pole_name, pol="\n", save_directory="Correlacao", size=10, save_fig=False
 ):
 
-    corr_coefs = [pearsonr(xi, y)[0] for xi in x]
+    corr_coefs = [pearsonr(i, y)[0] for i in x]
 
     x_corr = {key: abs(coef) for key, coef in zip(xlabels, corr_coefs)}
 
@@ -155,7 +155,6 @@ def pole_map(
     # Separation of real and imaginary parts
     real_pt = np.real(filtered_poles)
     imag_pt = np.imag(filtered_poles)
-    return np.array(real_pt).T, np.array(imag_pt).T 
 
     # Ellipses and auxiliary variables #
     # mean real and imaginary
@@ -166,16 +165,16 @@ def pole_map(
     draw_std_ellipse(ax, real_pt, l, m)
     
     # Plot of poles and zero
-    ax.scatter(real_pt, imag_pt, marker=".", label="Polos")
+    ax.scatter(real_pt, imag_pt, marker=".", label="Polos Simulados")
     ax.scatter(real_pt[0], imag_pt[0], marker="x", label="Polos Nominais")
-    ax.scatter(0, 0, s=13, facecolor="none", edgecolor="red", linewidth=1, label="Z1")
+    ax.scatter(0, 0, s=13, facecolor="none", edgecolor="red", linewidth=1)
 
     # Naming the zero and the poles: p1 to p6
     deslocx = 0.01
     deslocy = 0.05
     width_x = plt.xlim()[1] - plt.xlim()[0]
     width_y = plt.ylim()[1] - plt.ylim()[0]
-    num_polos = real_pt.shape[1]
+    num_polos = real_pt.shape[1] 
     for i in range(num_polos):
         ax.text(
             real_pt[0][i] + deslocx * width_x,
@@ -187,7 +186,7 @@ def pole_map(
         if i == 5:
             ax.text(real_pt[0][i] - deslocx * width_x, 
                     imag_pt[0][i] + deslocy * width_y, 
-                    "Z1", 
+                    "z1", 
                     fontsize=9, 
                     color="red"
             )
@@ -212,9 +211,6 @@ def pole_map(
     plt.close()
 
     return np.array(real_pt).T, np.array(imag_pt).T 
-
-
-    return np.array(real_pt).T, np.array(imag_pt).T
 
 def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     """
@@ -242,7 +238,6 @@ def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     plt.axvline(0, color="black", linewidth=0.8)
     plt.grid(True)
     plt.tight_layout()
-
 
 def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Banda_incerteza", save_fig=False):
     print("Plot pulse")
@@ -307,9 +302,7 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Band
 
     plt.show(block=False)
     plt.pause(pause)
-    plt.close()
-    plt.clf()
-
+    plt.close('all')
 
 def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
     """
@@ -440,7 +433,6 @@ def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
 
     return np.array(MonteCarlo).T, all_poles, y_out
 
-
 def Pearson8(all_y_coord, x_coords, pole_name, save_fig, stop=0):
     print("Pearson")
 
@@ -459,9 +451,7 @@ def Pearson8(all_y_coord, x_coords, pole_name, save_fig, stop=0):
     plt.show(block=False)
     plt.pause(pause)
     plt.close("all")
-    plt.clf()
-
-
+    
 def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
     """
     Histogram of the poles (with the values of y_real and y_imag).
@@ -477,6 +467,7 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
     print("Histogram")
 
     for enum, y_coord in enumerate(data):
+        
         mean = np.mean(y_coord)
         deviation = np.std(y_coord)
 
@@ -485,12 +476,19 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
         n, _, patches = ax.hist(y_coord, bins=20, color="darkblue", edgecolor="black", alpha=0.7)
 
         # Add vertical lines for ±σ
-        ax.axvline(mean + deviation*Sigma, color="red", linestyle="dashed", linewidth=1.5, label="Standard Deviation")
-        ax.axvline(mean - deviation*Sigma, color="red", linestyle="dashed", linewidth=1.5)
+        position_1 = mean + deviation*Sigma
+        position_2 = mean - deviation*Sigma
+
+        ax.axvline(position_1, color="red", linestyle="dashed", linewidth=1.5, label="Standard Deviation")
+        ax.axvline(position_2, color="red", linestyle="dashed", linewidth=1.5)
+
 
         # Text with σ
-        width_x = plt.xlim()[1] - plt.xlim()[0]
-        ax.text(mean + deviation*Sigma + 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=12)
+        width_x = plt.xlim()[1] - plt.xlim()[0]      
+        if position_1 == position_2:
+            ax.text(-position_1 - 5 * 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=10)
+        else:
+            ax.text(position_1 + 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=10)
 
         # Add count labels above each bar
         for count, patch in zip(n, patches):
@@ -516,10 +514,9 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
         plt.show(block=False)
         plt.pause(pause-1)
         plt.close("all")
-        break
-
 
 def ckt_parameters():
+    print("ckt_parameters")
 
     ## Definition of constants ##
     tau_1, tau_2, Vo, Vi = sp.symbols("tau_1 tau_2 Vo Vi")
@@ -569,39 +566,34 @@ def ckt_parameters():
 
     return H1, Cord, Cval
 
-trasnfer_function, component, component_values = ckt_parameters()
-
-### ITERATION ##
-# Associated errors of each circuit element
-error = [10, 1, 1, 1, 2, 2, 2, 0.10, 0, 0]  # C  # L  # RL  # tau1_2
-error_percentual = [i / 100 for i in error]
 
 # Poles names
 pole_names_real = ["P1 Real", "P2 Real", "P3 Real", "P4 Real", "P5 Real", "P6 Real"]
 pole_names_imag = ["P1 Imag", "P2 Imag", "P3 Imag", "P4 Imag", "P5 Imag", "P6 Imag"]
 
-save = True
+# Associated errors of each circuit element
+error = [10, 1, 1, 1, 2, 2, 2, 0.10, 0, 0]
+error_percentual = [i*2 / 100 for i in error]
 
-# Iteration
+# Set Circuit parameters
+trasnfer_function, component, component_values = ckt_parameters()
+
+
+save = True
+### ITERATION ##
 all_x_coord, all_pols, y = MonteCarlo_iteration(
     iterations=n_iterations, erro=error_percentual, components=component ,nominal_values=component_values, FT=trasnfer_function, t=t1
 )
 
 ## PLOTS PULSE ##
-# plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}" sigma=Sigma, bandas=True, save_fig=save)
+plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}", sigma=Sigma, bandas=True, save_fig=save)
 
 ## PLOT POLE_MAP ##
 all_y_real, all_y_imag = pole_map(all_pols, save_fig=save)
 
 ## PLOT PEARSON ##
-# Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
-# Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
-# Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
-# Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
-
-# ## PLOT HISTOSGRAMS ##
-# histogram(all_y_real, pole_names_real, save_fig=save)
-# histogram(all_y_imag, pole_names_imag, save_fig=save)
+Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
+Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
 
 ## PLOT HISTOSGRAMS ##
 histogram(all_y_real, pole_names_real, save_fig=save)
