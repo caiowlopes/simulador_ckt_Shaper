@@ -7,12 +7,25 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import sympy as sp
-from sympy import Eq
+from sympy import Eq, true
 from sympy import fraction
 from sympy.abc import s
 from scipy import signal
 from scipy.stats import pearsonr
+## Matplotlib Configuration ##
 
+plt.rcParams.update({
+    "font.size": 20,  # Tamanho da fonte
+    "figure.figsize": (10, 6),  # Tamanho da figura
+    # "font.family": "Arial",  # ou "serif", "sans-serif", "Times New Roman", etc.
+    "axes.titlesize": 17,    # Título do gráfico
+    "axes.labelsize": 17,    # Títulos dos eixos
+    "xtick.labelsize": 13,   # Ticks do eixo X
+    "ytick.labelsize": 13,   # Ticks do eixo Y
+    "legend.fontsize": 13,   # Legendas
+})
+
+##
 ## Constants ##
 # Plot limit with 400 points with distance of 25*10^-9 between them
 t1 = np.arange(0, 400) * 25 * 10**-9
@@ -20,15 +33,13 @@ xlabels = ["C0", "Ca", "Cb", "Cc", "La", "Lb", "Lc", "RL"]
 Sigma = 2
 pause = 3
 #  Number of iterations
-n_iterations = 15#01
-
+n_iterations = 5 
 
 print("\nStart")
 
-
 ## Functions ##
 
-def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
+def save_figure(file_name: str, directory=None, ext="png", dpi: int =300, add_date: bool =True):
     """
     Saves the current matplotlib figure to a specified folder.
 
@@ -39,7 +50,9 @@ def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     - dpi (int): image resolution
     - add_date (bool): if True, adds timestamp to the file name
     """
-    base_directory = "Figures"
+    timestamp = datetime.now().strftime("%d-%m-%Y")
+
+    base_directory = f"Figures_{timestamp}" if add_date else "Figures_no_date"
 
     if directory:
         directory = os.path.join(base_directory, directory)
@@ -49,67 +62,12 @@ def save_figure(file_name, directory=None, ext="png", dpi=300, add_date=True):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    timestamp = datetime.now().strftime("%d-%m-%Y")
-    full_name = f"{file_name}_{timestamp}.{ext}" if add_date else f"{file_name}.{ext}"
+    
+    full_name = f"{file_name}.{ext}"
     full_path = os.path.join(directory, full_name)
 
     plt.savefig(full_path, format=ext, dpi=dpi, bbox_inches="tight")
     print(f"Saved in: {full_path}")
-
-def Scatter(x_coords, y, pole_name, pol="\n", save_directory="Scatter", size=10, save_fig=False):
-
-    _, axs = plt.subplots(2, 4, figsize=(size, size))
-
-    # Main title with the name of the pole
-    plt.suptitle(f"Polo {pole_name}{pol}", fontweight="bold")
-
-    for i, (xi, label) in enumerate(zip(x_coords[:8], xlabels)): # x_coords[:8] to remove tau1 and tau2.
-        row, col = divmod(i, 4)  # return tupla (a // b, a % b)
-        axs[row, col].scatter(xi, y)
-        axs[row, col].set_title(f"Scatter Plot {i+1}")
-        axs[row, col].set_xlabel(label, fontweight="bold")
-        axs[row, col].set_ylabel("Variação do Polo")
-
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-
-    if save_fig:
-        file_name = f"Scatter_polo_{pole_name}".replace(" ", "_")
-        save_figure(file_name, directory=save_directory)
-
-def correlacao(x, y, pole_name, pol="\n", save_directory="Correlacao", size=10, save_fig=False):
-
-    corr_coefs = [pearsonr(i, y)[0] for i in x]
-
-    x_corr = {key: abs(coef) for key, coef in zip(xlabels, corr_coefs)}
-
-    sorted_coefficients = sorted(corr_coefs, key=abs)
-    x_coords_labels = sorted(xlabels, key=x_corr.__getitem__)
-
-    # Plot the horizontal bar graph of Pearson's correlation coefficients
-    plt.figure(figsize=(size, size))
-    plt.xlabel("Influência do Parâmetro")
-    plt.title(f"Polo {pole_name}{pol}", fontweight="bold")
-    plt.grid(axis="x")
-    plt.barh(x_coords_labels, sorted_coefficients, color="darkblue")
-
-    bars = plt.barh(x_coords_labels, sorted_coefficients, color="gray")
-
-    # Add the values ​​in the bars
-    for bar, value in zip(bars, sorted_coefficients):
-        plt.text(
-            bar.get_width() / 2,  # Horizontally centered position of the bar
-            bar.get_y() + bar.get_height() / 2,  # Vertically centered on the bar
-            f"{value:.2f}",  # Formatted to 2 decimal places
-            va="center",  # Centered vertical alignment
-            ha="center",  # Left horizontal alignment
-            fontsize=11,
-            color="black",
-            fontweight="bold",
-        )
-
-    if save_fig:
-        file_name = f"Correlacao_polo_{pole_name}".replace(" ", "_")
-        save_figure(file_name, directory=save_directory)
 
 def draw_std_ellipse(ax, real_pt, l, m, width=8, height=12, **kwargs):
 
@@ -136,15 +94,15 @@ def draw_std_ellipse(ax, real_pt, l, m, width=8, height=12, **kwargs):
             **kwargs,
         )
         ax.add_patch(elipse)
-    
-def pole_map(all_func_poles, save_directory="Pole Map", save_fig=False):
+
+def pole_map(all_func_poles, save_directory="Pole Map", save_fig=False, zoom=True):
     print("Pole map")
 
     # Remove the two largest poles from each row (poles generated by tau1 and tau2)
     filtered_poles = [linha[2:] for linha in np.sort(all_func_poles, axis=1)]
     filtered_poles = np.array(filtered_poles)
 
-    _, ax = plt.subplots(figsize=(10, 6))
+    _, ax = plt.subplots()
 
     # Separation of real and imaginary parts
     real_pt = np.real(filtered_poles)
@@ -169,19 +127,20 @@ def pole_map(all_func_poles, save_directory="Pole Map", save_fig=False):
     width_x = plt.xlim()[1] - plt.xlim()[0]
     width_y = plt.ylim()[1] - plt.ylim()[0]
     num_polos = real_pt.shape[1] 
+    fntsz = 15
     for i in range(num_polos):
         ax.text(
             real_pt[0][i] + deslocx * width_x,
             imag_pt[0][i] + deslocy * width_y,
             f"p{i+1}",
-            fontsize=9,
+            fontsize=fntsz,
             color="blue",
         )
         if i == 5:
             ax.text(real_pt[0][i] - 3.5 * deslocx * width_x, 
                     imag_pt[0][i] + deslocy * width_y, 
                     "z1", 
-                    fontsize=9, 
+                    fontsize=fntsz, 
                     color="red"
             )
 
@@ -198,13 +157,77 @@ def pole_map(all_func_poles, save_directory="Pole Map", save_fig=False):
     plt.tight_layout()
 
     if save_fig:
+        zoom_save=True
         save_figure("Mapa_polos", directory=save_directory)
+    else:
+        zoom_save=False
 
     plt.show(block=False)
     plt.pause(pause)
     plt.close()
 
+    if zoom:
+        pole_map_zoom(np.array(real_pt).T, np.array(imag_pt).T,ftsz=fntsz,save_directory=save_directory, save_fig=zoom_save)
+
     return np.array(real_pt).T, np.array(imag_pt).T 
+
+def pole_map_zoom(real, imag, ftsz, save_directory="Pole Map", save_fig=False):
+    print("Pole map zoom")
+
+    real_pt = np.array(real).T
+    imag_pt = np.array(imag).T
+
+    _, ax1 = plt.subplots()
+
+    x_lim_inf  = -2.5e5
+    x_lim_sup = 1.2e5
+    ax1.set_xlim(x_lim_inf, x_lim_sup)
+
+    y_lim_inf  = -0.5e6
+    y_lim_sup = 0.5e6   
+    ax1.set_ylim(y_lim_inf, y_lim_sup)
+
+    # draw_std_ellipse(ax, real_pt, l, m)
+    ax1.scatter(real_pt, imag_pt, marker=".", label="Polos Simulados")
+    ax1.scatter(real_pt[0], imag_pt[0], marker="x", label="Polos Nominais",linewidth=2)
+    ax1.scatter(0, 0, s=23, facecolor="none", edgecolor="red", linewidth=2)
+
+    deslocx = 0.01
+    deslocy = 0.05
+    width_x = -x_lim_inf + x_lim_sup
+    width_y = -y_lim_inf + y_lim_sup
+    num_polos = real_pt.shape[1] 
+
+    for i in range(num_polos):
+        if i != 5:
+            continue
+        else:
+            ax1.text(real_pt[0][i] + 22 * deslocx * width_x, 
+                    imag_pt[0][i] + deslocy * width_y, 
+                    "z1", 
+                    fontsize=ftsz, 
+                    color="red")
+            ax1.text(real_pt[0][i] + 2 * deslocx * width_x, 
+                    imag_pt[0][i] + deslocy * width_y, 
+                    "p6", 
+                    fontsize=ftsz, 
+                    color="b")
+
+    ax1.axhline(0, color="black", linewidth=0.8)
+    ax1.axvline(0, color="black", linewidth=0.8)
+    ax1.grid(True)
+    ax1.set_title("Plano Complexo Ampliado na Origem")
+    ax1.set_xlabel("Parte Real")
+    ax1.set_ylabel("Parte Imaginária")
+    ax1.legend()
+    plt.tight_layout()
+
+    if save_fig:
+        save_figure("Mapa_polos_zoom", directory=save_directory)
+
+    plt.show(block=False)
+    plt.pause(pause)
+    plt.close()
 
 def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     """
@@ -233,7 +256,7 @@ def config_plot_pulso(titles, labelx, ylabel, xlim, ylim=None):
     plt.grid(True)
     plt.tight_layout()
 
-def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Banda_incerteza", save_fig=False):
+def plot_pulso(t, y, sigma, show_fig=False, only_bandas=True, save_directory="Pulse", file_name="Banda_incerteza", save_fig=False):
     print("Plot pulse")
 
     # Mean and standard deviation calculation
@@ -241,7 +264,7 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Band
     ymed = np.mean(y, axis=0)
     desv_pad = np.std(y, axis=0)
 
-    if not bandas:
+    if not only_bandas:
         # --- 1. Pulse with variations ---
         [plt.plot(t, yi, color="b", linewidth=2) for yi in y]
         config_plot_pulso(
@@ -250,10 +273,11 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Band
         if save_fig:
             save_figure("Pulso com Variação", directory=save_directory)
 
-        plt.show(block=False)
-        plt.pause(pause)
-        plt.close()
-        plt.clf()
+        if show_fig:
+            plt.show(block=False)
+            plt.pause(pause - pause/2)
+            plt.close()
+            plt.clf()
 
         # --- 2. Pulso without variations ---
         plt.plot(t, y[0], color="b", linewidth=2)
@@ -263,10 +287,11 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Band
         if save_fig:
             save_figure("Pulso Sem Variação", directory=save_directory)
 
-        plt.show(block=False)
-        plt.pause(pause)
-        plt.close()
-        plt.clf()
+        if show_fig:
+            plt.show(block=False)
+            plt.pause(pause - pause/2)
+            plt.close()
+            plt.clf()
 
     # --- 3. Uncertainty Band ---
     banda_sup = ymed + desv_pad * sigma
@@ -293,10 +318,12 @@ def plot_pulso(t, y, sigma, bandas=True, save_directory="Pulse", file_name="Band
 
     if save_fig:
         save_figure(file_name=file_name, directory=save_directory)
-
-    plt.show(block=False)
-    plt.pause(pause)
-    plt.close('all')
+    
+    if show_fig:
+        plt.show(block=False)
+        plt.pause(pause)
+        plt.close('all')
+        plt.clf()
 
 def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
     """
@@ -373,10 +400,6 @@ def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
 
         for enum, (polo, residuo) in enumerate(zip(polos, residuos)):
 
-            # Removing the img part (0j) of the real residues
-            # if polo.imag == 0:
-            #     residuo = residuo.real
-            #     polo = polo.real
 
             # Check if the imaginary part is zero
             if polo.imag == 0:
@@ -427,27 +450,90 @@ def MonteCarlo_iteration(iterations, erro, components, nominal_values, FT, t):
 
     return np.array(MonteCarlo).T, all_poles, y_out
 
-def Pearson8(all_y_coord, x_coords, pole_name, save_fig, stop=0):
-    print("Pearson")
+def Scatter(x_coords, y, pole_name, fnt_legenda, fntsz_title, fntsz_axis, fnt_ticks,
+            pol="\n", save_directory="Scatter", size=10, save_fig=False):
+
+    fig_width = size * 1.5
+    fig_height = size * 1.5
+    _, axs = plt.subplots(2, 4, figsize=(fig_width, fig_height))
+
+    plt.suptitle(f"Polo {pole_name}{pol}", fontweight="bold", fontsize=fntsz_title)
+
+    for i, (xi, label) in enumerate(zip(x_coords[:8], xlabels)):
+        row, col = divmod(i, 4)  
+        axs[row, col].scatter(xi, y)
+        axs[row, col].set_title(f"Scatter Plot {i+1}", fontsize=fntsz_title)
+        axs[row, col].set_xlabel(label, fontsize=fntsz_axis, fontweight="bold")
+        axs[row, col].set_ylabel("Variação do Polo", fontsize=fntsz_axis, fontweight="bold")
+        axs[row, col].tick_params(axis='both', labelsize=fnt_ticks)
+
+    plt.tight_layout(rect=[0, 0, 1, 1])
+
+    if save_fig:
+        file_name = f"Scatter_polo_{pole_name}".replace(" ", "_")
+        save_figure(file_name, directory=save_directory)
+
+def correlacao(x, y, pole_name, fnt_val_bar, fntsz_title, fntsz_axis, fnt_ticks,
+               pol="\n", save_directory="Correlacao", size=10, save_fig=False):
+
+    corr_coefs = [pearsonr(i, y)[0] for i in x]
+    x_corr = {key: abs(coef) for key, coef in zip(xlabels, corr_coefs)}
+    sorted_coefficients = sorted(corr_coefs, key=abs)
+    x_coords_labels = sorted(xlabels, key=x_corr.__getitem__)
+
+    plt.figure(figsize=(size, size))
+    plt.barh(x_coords_labels, sorted_coefficients, color="gray")
+
+    plt.xlabel("Influência do Parâmetro", fontsize=fntsz_axis)
+    plt.title(f"Polo {pole_name}{pol}", fontsize=fntsz_title, fontweight="bold")
+    plt.grid(axis="x")
+    plt.xticks(fontsize=fnt_ticks)
+    plt.yticks(fontsize=fnt_ticks)
+
+    bars = plt.barh(x_coords_labels, sorted_coefficients, color="gray")
+
+    # Add value on each bar
+    for bar, value in zip(bars, sorted_coefficients):
+        plt.text(bar.get_width() / 2,
+                 bar.get_y() + bar.get_height() / 2,
+                 f"{value:.2f}",
+                 va="center",
+                 ha="center",
+                 fontsize=fnt_val_bar,
+                 color="black",
+                 fontweight="bold")
+
+    if save_fig:
+        file_name = f"Correlacao_polo_{pole_name}".replace(" ", "_")
+        save_figure(file_name, directory=save_directory)
+
+def Pearson8(all_y_coord, x_coords, pole_name, show_fig=False,
+             fnt_legenda=15, fnt_val_bar=13, fntsz_title=20,
+             fntsz_axis=17, fnt_ticks=17, size=10, save_fig=False):
 
     for enum, y_coord in enumerate(all_y_coord):
         try:
-            if stop == enum and stop != 0:
-                break
+            Scatter(x_coords, y_coord, pole_name=pole_name[enum],
+                    fnt_legenda=fnt_legenda, fntsz_title=fntsz_title,
+                    fntsz_axis=fntsz_axis, fnt_ticks=fnt_ticks,
+                    size=size, save_fig=save_fig)
 
-            Scatter(x_coords, y_coord, pole_name=pole_name[enum], save_fig=save_fig)
-            correlacao(x_coords, y_coord, pole_name=pole_name[enum], save_fig=save_fig)
-
-            plt.show(block=False)
-            plt.pause(pause)
-            plt.close("all")
+            correlacao(x_coords, y_coord, pole_name=pole_name[enum],
+                       fnt_val_bar=fnt_val_bar, fntsz_title=fntsz_title,
+                       fntsz_axis=fntsz_axis, fnt_ticks=fnt_ticks,
+                       size=size, save_fig=save_fig)
+            if show_fig:
+                plt.show(block=False)
+                plt.pause(pause)
+                plt.close("all")
 
         except Exception:
             print(f"Erro ao gerar gráfico para {pole_name[enum]}")
             continue
+
     plt.clf()
-    
-def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
+
+def histogram(data, pole_name, show_figs=False, save_directory="Histograma", save_fig=False,fnt_legenda=15,fntsz_cont=13,fntsz_title=18,fntsz_axis=17,figsize_x=10,figsize_y=7,fnt_ticks=15,):
     """
     Histogram of the poles (with the values of y_real and y_imag).
     Displays count values above each bar.
@@ -467,51 +553,51 @@ def histogram(data, pole_name, save_directory="Histograma", save_fig=False):
         deviation = np.std(y_coord)
 
         # Create histogram
-        _, ax = plt.subplots()
+        _, ax = plt.subplots(figsize=(figsize_x, figsize_y))
         n, _, patches = ax.hist(y_coord, bins=20, color="darkblue", edgecolor="black", alpha=0.7)
 
         # Add vertical lines for ±σ
-        position_1 = mean + deviation*Sigma
-        position_2 = mean - deviation*Sigma
+        position_1 = mean + deviation * Sigma
+        position_2 = mean - deviation * Sigma
 
-        ax.axvline(position_1, color="red", linestyle="dashed", linewidth=1.5, label="Standard Deviation")
+        ax.axvline(position_1, color="red", linestyle="dashed", linewidth=1.5, label=f"Desvio Padrão {deviation:.2e}") #label="Standard Deviation")
         ax.axvline(position_2, color="red", linestyle="dashed", linewidth=1.5)
-
+        ax.axvline(mean, color="darkorange", linestyle="dashed", linewidth=1.5, label=f"Média: {mean:.2e}")
 
         # Text with σ
         width_x = plt.xlim()[1] - plt.xlim()[0]      
         if position_1 == position_2:
-            ax.text(-position_1 - 5 * 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=10)
+            ax.text(-position_1 - 5 * 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=20)
         else:
-            ax.text(position_1 + 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=10)
-
-        # Text with mean
-        ax.text(mean, plt.ylim()[1] * 0.95, f"{mean:.2f}", color="red", fontsize=8)
+            ax.text(position_1 + 0.01 * width_x, plt.ylim()[1] * 0.7, fr"{Sigma}$\sigma$", color="red", fontsize=20)
 
         # Add count labels above each bar
         for count, patch in zip(n, patches):
             x = patch.get_x() + patch.get_width() / 2
             y = patch.get_height()
-            ax.text(x, y + 1, str(int(count)), ha='center', va='bottom', fontsize=7, color='black', fontweight='bold')
+            ax.text(x, y + 1, str(int(count)), ha='center', va='bottom', fontsize=fntsz_cont, color='black', fontweight='bold')
 
         # Titles and labels
-        ax.set_title(f"Distribution of {pole_name[enum]} Values")
-        ax.set_xlabel("Distribution of Pole Values")
-        ax.set_ylabel("Count")
+        ax.set_title(f"Distribution of {pole_name[enum]} Values", fontsize=fntsz_title)
+        ax.set_xlabel("Distribution of Pole Values", fontsize=fntsz_axis)
+        ax.set_ylabel("Count", fontsize=fntsz_axis)
 
         # Layout
         ax.grid(True, alpha=0.7)
+        ax.legend(loc="upper left",fontsize=fnt_legenda)
+        ax.tick_params(axis='both', labelsize=fnt_ticks)
         plt.tight_layout()
 
         # Save figure if needed
         if save_fig:
             file_name = f"Hist_{pole_name[enum]}".replace(" ", "_")
-            save_figure(file_name, directory=save_directory, add_date=False)
-
-        # Show and pause between figures
-        plt.show(block=False)
-        plt.pause(pause-1)
-        plt.close("all")
+            save_figure(file_name, directory=save_directory)
+        
+        if show_figs:
+            # Show and pause between figures
+            plt.show(block=False)
+            plt.pause(pause-1)
+            plt.close("all")
 
 def ckt_parameters():
     print("ckt_parameters")
@@ -564,64 +650,6 @@ def ckt_parameters():
 
     return H1, Cord, Cval
 
-def pole_map_zoom(real, imag, save_directory="Pole Map", save_fig=False):
-    print("Pole map zoom")
-
-    real_pt = np.array(real).T
-    imag_pt = np.array(imag).T
-
-    _, ax1 = plt.subplots(figsize=(10, 6))
-
-    x_lim_inf  = -2.5e5
-    x_lim_sup = 1.2e5
-    ax1.set_xlim(x_lim_inf, x_lim_sup)
-
-    y_lim_inf  = -0.5e6
-    y_lim_sup = 0.5e6   
-    ax1.set_ylim(y_lim_inf, y_lim_sup)
-
-    # draw_std_ellipse(ax, real_pt, l, m)
-    ax1.scatter(real_pt, imag_pt, marker=".", label="Polos Simulados")
-    ax1.scatter(real_pt[0], imag_pt[0], marker="x", label="Polos Nominais",linewidth=2)
-    ax1.scatter(0, 0, s=23, facecolor="none", edgecolor="red", linewidth=2)
-
-    deslocx = 0.01
-    deslocy = 0.05
-    width_x = -x_lim_inf + x_lim_sup
-    width_y = -y_lim_inf + y_lim_sup
-    num_polos = real_pt.shape[1] 
-
-    for i in range(num_polos):
-        if i != 5:
-            continue
-        else:
-            ax1.text(real_pt[0][i] + 22 * deslocx * width_x, 
-                    imag_pt[0][i] + deslocy * width_y, 
-                    "z1", 
-                    fontsize=13, 
-                    color="red")
-            ax1.text(real_pt[0][i] + 2 * deslocx * width_x, 
-                    imag_pt[0][i] + deslocy * width_y, 
-                    "p6", 
-                    fontsize=13, 
-                    color="b")
-
-    ax1.axhline(0, color="black", linewidth=0.8)
-    ax1.axvline(0, color="black", linewidth=0.8)
-    ax1.grid(True)
-    ax1.set_title("Plano Complexo Ampliado na Origem")
-    ax1.set_xlabel("Parte Real")
-    ax1.set_ylabel("Parte Imaginária")
-    ax1.legend()
-    plt.tight_layout()
-
-    if save_fig:
-        save_figure("Mapa_polos_zoom", directory=save_directory)
-
-    plt.show(block=False)
-    plt.pause(pause)
-    plt.close()
-
 # Poles names
 pole_names_real = ["P1 Real", "P2 Real", "P3 Real", "P4 Real", "P5 Real", "P6 Real"]
 pole_names_imag = ["P1 Imag", "P2 Imag", "P3 Imag", "P4 Imag", "P5 Imag", "P6 Imag"]
@@ -640,16 +668,17 @@ all_x_coord, all_pols, y = MonteCarlo_iteration(
 )
 
 ## PLOTS PULSE ##
-plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}", sigma=Sigma, bandas=False, save_fig=save)
+plot_pulso(t=t1, y=y,file_name=f"Banda_incerteza_{n_iterations}", sigma=Sigma, only_bandas=True, save_fig=save)
+
 
 ## PLOT POLE_MAP ##
 all_y_real, all_y_imag = pole_map(all_pols, save_fig=save)
-pole_map_zoom(all_y_real, all_y_imag, save_fig=save)
+
+## PLOT HISTOSGRAMS ##
+histogram(all_y_real, pole_names_real, save_fig=save)
+histogram(all_y_imag, pole_names_imag, save_fig=save)
 
 ## PLOT PEARSON ##
 Pearson8(all_y_real, all_x_coord, pole_names_real, save_fig=save)
 Pearson8(all_y_imag, all_x_coord, pole_names_imag, save_fig=save)
 
-## PLOT HISTOSGRAMS ##
-histogram(all_y_real, pole_names_real, save_fig=save)
-histogram(all_y_imag, pole_names_imag, save_fig=save)
