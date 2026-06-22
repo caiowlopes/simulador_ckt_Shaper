@@ -28,14 +28,14 @@ plt.rcParams.update(
 )
 
 # Constantes #
-t1 = np.arange(0, 400) * 25 * 10**-9
-xlabels = ["C0", "Ca", "Cb", "Cc", "La", "Lb", "Lc", "RL"]
+t1 = np.arange(0, 400) * 25e-9
+xlabels = ["C0", "Ca", "Cb", "Cc", "Cd", "La", "Lb", "Lc", "Ra", "RL"]
 pause = 1
 
 ## Functions auxiliares ##
 
 
-def ckt_parameters():
+def ckt_parameters_old():
     # print("ckt_parameters")
 
     ## Definition of constants ##
@@ -84,6 +84,67 @@ def ckt_parameters():
 
     # Final transfer function
     H1 = PMT * h
+
+    return H1, Cord, Cval
+
+
+def ckt_parameters(pmt: bool = False):
+    """
+    With new values and equations
+    """
+
+    ## Definition of constants ##
+    tau_1, tau_2, Vo, Vi = sp.symbols("tau_1 tau_2 Vo Vi")
+    CC0, C1, C2, C3, C4 = sp.symbols("CC0 C1 C2 C3 C4")
+    Ra, Rb, Rc = sp.symbols("Ra Rb Rc")
+    L1, L2, L3 = sp.symbols("L1 L2 L3")
+    I1, I2, I3, I4, I5, I6 = sp.symbols("I1 I2 I3 I4 I5 I6")
+
+    # Ckt components in order
+    Cord = [CC0, C1, C2, C3, C4, L1, L2, L3, Ra, Rb, Rc]
+    Cval = [
+        101e-9,  # CC0
+        33e-12,  # C1
+        146e-12,  # C2
+        102e-12,  # C3
+        6.8e-12,  # C4
+        2.48e-6,  # L1
+        1.6e-6,  # L2
+        0.78e-6,  # L3
+        1.5e3,  # Ra
+        62.9,  # Rb
+        62.9,  # Rc
+    ]
+
+    # Ckt equations new
+    eqn1 = Eq(I1 / CC0 / s + 1 / C1 / s * (I1 - I2), Vi)
+    eqn2 = Eq(1 / C1 / s * (I2 - I1) + s * L1 * I2 + 1 / C2 / s * (I2 - I3), 0)
+    eqn3 = Eq(1 / C2 / s * (I3 - I2) + s * L2 * I3 + 1 / C3 / s * (I3 - I4), 0)
+    eqn4 = Eq(1 / C3 / s * (I4 - I3) + s * L3 * I4 + 1 / C4 / s * (I4 - I5), 0)
+    eqn5 = Eq(1 / C4 / s * (I5 - I4) + (I5 - I6) * Ra, 0)
+    eqn6 = Eq(Ra * (I6 - I5) + Rb * I6 + Rc * I6, 0)
+    eqn7 = Eq(I6 * (Rb + Rc), Vo)
+    RL = Rb + Rc
+
+    # Solver
+    eqns = [eqn1, eqn2, eqn3, eqn4, eqn5, eqn6, eqn7]
+    Sol = sp.solve(eqns, [I1, I2, I3, I4, I5, I6, Vo])
+
+    si6 = Sol[I6]
+
+    # PMT
+    PMT = (1 / tau_2 - 1 / tau_1) / (
+        s**2 + (1 / tau_2 + 1 / tau_1) * s + 1 / tau_2 / tau_1
+    )
+
+    # I_out without V_in
+    h = RL * si6 / Vi
+
+    # Final transfer function
+    if pmt:
+        H1 = h * PMT
+    else:
+        H1 = h
 
     return H1, Cord, Cval
 
