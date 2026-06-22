@@ -194,6 +194,8 @@ def wave_former_main(
             "nominal_values": component_values,
             "seed": Seed,
         }
+    else:
+        parametros_MC = parameters
 
     return CKT_simulator(**parametros_MC)  # type: ignore[operator]
 
