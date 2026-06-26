@@ -1,0 +1,10 @@
+import sys
+
+# Caminho para onde você clonou/clonará o repositório
+sys.path.append(
+    r"C:\Users\git clones\simulador_ckt_Shaper\Script_Shaper_Ckt"
+)
+
+# Importa o módulo
+import Shaper_Simulator
+FT, componentes, nominal_values = Shaper_Simulator.ckt_parameters()
