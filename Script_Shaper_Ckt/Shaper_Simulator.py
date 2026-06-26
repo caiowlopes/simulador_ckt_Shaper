@@ -147,7 +147,7 @@ def ckt_parameters(pmt: bool = False):
     return H1, Cord, Cval
 
 
-def MonteCarlo_iteration(
+def MonteCarlo_iteration_old(
     iterations,
     erro,
     components,
@@ -213,58 +213,72 @@ def MonteCarlo_iteration(
         # Separating numerator from denominator
         N_H, D_H = fraction(H)
 
-        """RESIDUOS E POLOS"""
+        # pegar coeficientes
+        coefs_num = sp.Poly(N_H, s).all_coeffs()
+        coefs_den = sp.Poly(D_H, s).all_coeffs()
 
-        coefs_num = []  # reset variable
-        coefs_den = []  # reset variable
+        # Converter para float
+        coefs_num = [float(c) for c in coefs_num]
+        coefs_den = [float(c) for c in coefs_den]
 
-        coefs_num = sp.Poly(N_H, s).all_coeffs()  # get coefs
-        coefs_den = sp.Poly(D_H, s).all_coeffs()  # get coefs
+        # Função de transferência
+        system = signal.TransferFunction(coefs_num, coefs_den)
 
-        # Frações parciais
-        residuos, polos, b0 = [], [], []
-        residuos, polos, b0 = signal.residue(coefs_num, coefs_den)
+        # Resposta ao impulso
+        T_resp, y_impulse = signal.impulse(system=system, T=t)
 
-        # Saving all poles
-        all_poles.append(polos)
+        # """RESIDUOS E POLOS"""
 
-        # Residual correction (removing the img part 0j from the real residuals)
-        for polo1, residuo1 in zip(polos, residuos):
-            if polo1.imag == 0:
-                residuo1 = residuo1.real
+        # coefs_num = []  # reset variable
+        # coefs_den = []  # reset variable
 
-        """LAPLACE INVERSA E GRAFICOS"""
+        # coefs_num = sp.Poly(N_H, s).all_coeffs()  # get coefs
+        # coefs_den = sp.Poly(D_H, s).all_coeffs()  # get coefs
 
-        for enum, (polo, residuo) in enumerate(zip(polos, residuos)):
+        # # Frações parciais
+        # residuos, polos, b0 = [], [], []
+        # residuos, polos, b0 = signal.residue(coefs_num, coefs_den)
 
-            # Check if the imaginary part is zero
-            if polo.imag == 0:
-                "EXPONENCIAIS"
+        # # Saving all poles
+        # all_poles.append(polos)
 
-                # Removing the img part (0j) of the real residues
-                A = residuo.real
-                d = polo.real
-                x = A * np.exp(d * t)
+        # # Residual correction (removing the img part 0j from the real residuals)
+        # for polo1, residuo1 in zip(polos, residuos):
+        #     if polo1.imag == 0:
+        #         residuo1 = residuo1.real
 
-                xa.append(x)
+        # """LAPLACE INVERSA E GRAFICOS"""
 
-            else:
-                "SENOS E COSSENOS"
+        # for enum, (polo, residuo) in enumerate(zip(polos, residuos)):
 
-                pol_1 = polos[enum - 1]  # conjugate
+        # Check if the imaginary part is zero
+        # if polo.imag == 0:
+        #     "EXPONENCIAIS"
 
-                if polo != pol_1 and polo != np.conjugate(pol_1):
+        #     # Removing the img part (0j) of the real residues
+        #     A = residuo.real
+        #     d = polo.real
+        #     x = A * np.exp(d * t)
 
-                    a1 = polo.real
-                    b1 = abs(polo.imag)
+        #     xa.append(x)
 
-                    Mod = abs(residuos[enum])  # Modulo
-                    fase = np.angle(residuos[enum])  # fase in rad
+        # else:
+        #     "SENOS E COSSENOS"
 
-                    # FP term
-                    x = 2 * Mod * np.exp(a1 * t) * np.cos(b1 * t + fase)
+        #     pol_1 = polos[enum - 1]  # conjugate
 
-                    xa.append(x)
+        #     if polo != pol_1 and polo != np.conjugate(pol_1):
+
+        # a1 = polo.real
+        # b1 = abs(polo.imag)
+
+        # Mod = abs(residuos[enum])  # Modulo
+        # fase = np.angle(residuos[enum])  # fase in rad
+
+        # # FP term
+        # x = 2 * Mod * np.exp(a1 * t) * np.cos(b1 * t + fase)
+
+        # xa.append(x)
 
         "SUMMING THE TERMS"
 
@@ -273,12 +287,98 @@ def MonteCarlo_iteration(
             y_out.append(y1)
 
         else:
-            sinal0 = sum(xa).real
+            sinal0 = y_impulse  # sum(xa).real
             maxs = np.max(np.abs(sinal0))
             y1 = sinal0 / maxs  # largest module/ normalize
             y_out.append(y1)
 
     return y_out  # ,np.array(MonteCarlo).T, all_poles
+
+
+def MonteCarlo_iteration(
+    iterations,
+    erro,
+    components,
+    nominal_values,
+    FT,
+    t,
+    seed: int | None = None,
+):
+    """
+    iter = 0 represents pure/error-free signal value
+    MonteCarlo[0] = actual/error-free signal value
+
+    FT: Transfer Function
+    t1: time vector
+    iterations: int
+        number of iterations
+    erro: percentage error of circuit components
+    nominal_values: nominal values of circuit components
+
+     seed: int | None
+        Semente opcional para reprodutibilidade.
+    """
+    # print("Monte Carlo iteration")
+
+    # Store the values ​​with error of each iteration
+    MonteCarlo = []
+
+    # Store all the FPs added of each iteration # list of all the graphs added with errors
+    y_out = []
+
+    # Helper to store the values ​​of y
+    y1 = []
+
+    # Seed para reprodutibilidade
+    rng = random.Random(seed)
+
+    for iter in range(iterations):
+
+        # Random values; # error range; maximum error from -e% to +e%
+        xa = []  # FP function of the summed iteration
+        new_Cval = []  # List of components with changed values
+
+        # Changing element values ​​without changing tau1 and tau2
+        new_Cval = [
+            (
+                value * (rng.gauss(0, erro[idx])) + value
+                if iter != 0 and idx < len(nominal_values) - 2
+                else value
+            )
+            for idx, value in enumerate(nominal_values)
+        ]
+
+        # Saving component variations
+        MonteCarlo.append(new_Cval[:-2])
+
+        H = FT
+        for variavel, v in zip(components, new_Cval):
+            H = H.subs(variavel, v)
+
+        # Separating numerator from denominator
+        N_H, D_H = fraction(H)
+
+        # pegar coeficientes
+        coefs_num = sp.Poly(N_H, s).all_coeffs()
+        coefs_den = sp.Poly(D_H, s).all_coeffs()
+
+        # Converter para float
+        coefs_num = [float(c) for c in coefs_num]
+        coefs_den = [float(c) for c in coefs_den]
+
+        # Função de transferência
+        system = signal.TransferFunction(coefs_num, coefs_den)
+
+        # Resposta ao impulso
+        T_resp, y_impulse = signal.impulse(system=system, T=t)
+
+        if iter == 0:
+            maxs = np.max(np.abs(y_impulse))
+        else:
+            y1 = y_impulse / maxs  # largest module/ normalize
+            y_out.append(y1)
+
+    return y_out, T_resp  # ,np.array(MonteCarlo).T, all_poles
 
 
 def save_figure(
