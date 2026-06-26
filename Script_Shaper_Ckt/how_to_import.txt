@@ -8,3 +8,19 @@ sys.path.append(
 # Importa o módulo
 import Shaper_Simulator
 FT, componentes, nominal_values = Shaper_Simulator.ckt_parameters()
+
+ckt_parameters_error = (  # dois ultimos são tau1 e tau2
+    np.array([10, 1, 1, 1, 2, 2, 2, 0.10, 0, 0], dtype=float)
+) / 100
+
+parametros_MC={
+    'iterations':10,
+    'erro':ckt_parameters_error,
+    'components':componentes,
+    'nominal_values':nominal_values,
+    'FT':FT,
+    't':np.arange(0,400)*25e-9,
+    'seed':42,
+}
+
+saida,t_resp = Shaper_Simulator.MonteCarlo_iteration(**parametros_MC)
