@@ -177,6 +177,7 @@ def wave_former_main(
     noise: int | float | list | np.ndarray = 0,
     parameters: dict | None = None,
     Seed: int | None = None,
+    retornar_t_resp: bool = False,  # valido para o novo metodo do MonteCarlo_iter
 ):
 
     # Parametros do CKT #
@@ -187,7 +188,7 @@ def wave_former_main(
     if parameters is None:
         parametros_MC = {
             "iterations": num_canais,
-            "t": np.arange(0, qntd_amostras) * 25 * 10**-9,
+            "t": np.arange(0, qntd_amostras) * 25e-9,
             "FT": TF,  # literal
             "erro": noise,  # Erro de cada elemento do circuito
             "components": component,
@@ -197,7 +198,11 @@ def wave_former_main(
     else:
         parametros_MC = parameters
 
-    return CKT_simulator(**parametros_MC)  # type: ignore[operator]
+    saida, tempo_resposta = CKT_simulator(**parametros_MC)  # type: ignore[operator]
+    if retornar_t_resp:
+        return saida, tempo_resposta
+    else:
+        return saida
 
 
 if __name__ == "__main__":

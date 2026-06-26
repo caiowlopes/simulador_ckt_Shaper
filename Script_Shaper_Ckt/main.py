@@ -25,6 +25,7 @@ waves_por_canal = np.asarray(  # waves_por_canal[0] = sinal sem variação dos c
         CKT_parameters=Shaper_Simulator.ckt_parameters,
         CKT_simulator=Shaper_Simulator.MonteCarlo_iteration,
         Seed=seed,
+        retornar_t_resp=False,
     )
 )
 
